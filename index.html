@@ -1,0 +1,354 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>轉乘規劃</title>
+<style>
+:root{
+  --bg:#f4f5f7; --card:#fff; --ink:#1d2129; --sub:#6b7280; --line:#e5e7eb; --accent:#0f6fde;
+  --br:#c48c31; --bl:#0070bd; --g:#008659; --r:#e3002c; --o:#f8b61c; --bus:#16a34a; --walk:#9ca3af;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#111418; --card:#1b1f25; --ink:#e8eaed; --sub:#9aa0a6; --line:#2c323a; --accent:#5aa2ff;}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,"Noto Sans TC","Microsoft JhengHei",sans-serif}
+.wrap{max-width:480px;margin:0 auto;padding:16px}
+h1{font-size:20px;margin:4px 0 14px}
+.card{background:var(--card);border-radius:14px;padding:14px;box-shadow:0 1px 3px rgba(0,0,0,.06);margin-bottom:12px}
+.od{display:grid;grid-template-columns:auto 1fr 40px;position:relative;gap:8px 10px;align-items:center}
+.od-label{font-size:15px;font-weight:700;white-space:nowrap}
+.od-label.s{color:#0a84ff} .od-label.e{color:#ff2d95}
+.od input,.addr input{width:100%;border:1px solid var(--line);background:transparent;color:var(--ink);border-radius:10px;padding:11px 12px;font-size:16px}
+.swap{grid-row:1/3;grid-column:3;border:1px solid var(--line);background:transparent;color:var(--ink);border-radius:50%;width:38px;height:38px;font-size:18px;cursor:pointer}
+.addr label{font-size:13px;color:var(--sub);display:block;margin-bottom:6px}
+.addr .row{display:flex;gap:8px}
+.btn{border:0;background:var(--accent);color:#fff;border-radius:10px;padding:0 16px;font-size:16px;font-weight:600;cursor:pointer;white-space:nowrap}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+.chip{border:1px solid var(--line);border-radius:999px;padding:5px 11px;font-size:13px;background:transparent;color:var(--ink);cursor:pointer}
+.chip.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.hint{font-size:12px;color:var(--sub);margin:6px 2px 12px}
+.route{cursor:pointer}
+.rhead{display:flex;justify-content:space-between;align-items:baseline}
+.rtime{font-size:22px;font-weight:700}
+.rmeta{font-size:13px;color:var(--sub)}
+.tag{display:inline-block;font-size:11px;padding:2px 7px;border-radius:6px;background:#fde68a;color:#7c4a03;margin-left:6px;vertical-align:middle}
+.strip{display:flex;align-items:center;gap:4px;flex-wrap:wrap;margin:10px 0 2px}
+.pill{color:#fff;font-size:13px;font-weight:600;padding:3px 8px;border-radius:6px}
+.pill.walk{background:transparent;color:var(--sub);border:1px dashed var(--walk);font-weight:500}
+.arrow{color:var(--sub);font-size:12px}
+.steps{display:none;margin-top:12px;border-top:1px solid var(--line);padding-top:10px}
+.route.open .steps{display:block}
+.step{display:grid;grid-template-columns:14px 1fr auto;gap:10px;position:relative;padding-bottom:12px}
+.step .bar{width:6px;border-radius:3px;margin:4px auto 0;min-height:100%}
+.step .t{font-size:14px} .step .d{font-size:12px;color:var(--sub);margin-top:2px}
+.step .m{font-size:13px;color:var(--sub)}
+.empty{text-align:center;color:var(--sub);padding:30px 0}
+.spin{width:28px;height:28px;border:3px solid var(--line);border-top-color:var(--accent);border-radius:50%;animation:s 1s linear infinite;margin:20px auto}
+@keyframes s{to{transform:rotate(360deg)}}
+.loc{display:flex;gap:8px;margin-top:10px}
+.loc .btn{flex:1;min-width:0;font-size:14px;padding:10px 6px;background:transparent;color:var(--accent);border:1px solid var(--accent)}
+.stop{border-top:1px solid var(--line);padding:10px 0;cursor:pointer}
+.stop:first-of-type{border-top:0}
+.shead{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.sname{font-weight:600}.sdist{font-size:13px;color:var(--sub);white-space:nowrap}
+.saddr{font-size:12px;color:var(--sub);margin-top:2px}
+.rlist{display:none;margin-top:8px}
+.stop.open .rlist{display:block}
+.rrow{display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:center;padding:5px 0;font-size:14px}
+.rrow .pill{background:var(--bus);text-align:center;min-width:52px}
+.rrow .tw{color:var(--sub);font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rrow .eta{font-size:13px;font-weight:600;white-space:nowrap}
+.rrow .eta.soon{color:var(--r)} .rrow .eta.off{color:var(--sub);font-weight:400}
+.sec-title{font-size:15px;font-weight:700;margin-bottom:4px;display:flex;justify-content:space-between}
+.sec-title small{font-weight:400;color:var(--sub);font-size:12px}
+.err{color:var(--r);font-size:14px}
+.field{display:flex;position:relative}
+.field input{border-top-right-radius:0;border-bottom-right-radius:0}
+.lov-btn{border:1px solid var(--line);border-left:0;background:transparent;color:var(--ink);border-radius:0 10px 10px 0;width:40px;font-size:14px;cursor:pointer}
+.lov{display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;z-index:10;background:var(--card);border:1px solid var(--line);border-radius:10px;box-shadow:0 6px 20px rgba(0,0,0,.15);overflow:hidden}
+.lov.open{display:block}
+.lov button{display:block;width:100%;text-align:left;border:0;border-top:1px solid var(--line);background:transparent;color:var(--ink);padding:12px 14px;font-size:15px;cursor:pointer}
+.lov button:first-child{border-top:0}
+.lov button:hover{background:var(--bg)}
+.lov small{color:var(--sub);margin-left:6px}
+.btn3d{grid-column:1/-1;margin-top:8px;padding:14px;border:0;border-radius:14px;cursor:pointer;
+  font-size:18px;font-weight:800;letter-spacing:6px;color:#fff;text-shadow:0 1px 0 rgba(0,0,0,.25);
+  background:linear-gradient(180deg,#d58bff 0%,#b44dff 55%,#9320e6 100%);
+  box-shadow:0 6px 0 #6a0fae,0 10px 16px rgba(106,15,174,.35),inset 0 1px 0 rgba(255,255,255,.45);
+  transform:translateY(0);transition:transform .08s,box-shadow .08s}
+.btn3d:hover{filter:brightness(1.05)}
+.btn3d:active{transform:translateY(5px);box-shadow:0 1px 0 #6a0fae,0 3px 6px rgba(106,15,174,.3),inset 0 1px 0 rgba(255,255,255,.35)}
+.route.rec{border:2px solid #b44dff;box-shadow:0 6px 18px rgba(180,77,255,.25);padding-top:0;overflow:hidden}
+.rec-head{margin:0 -14px 10px;padding:12px 14px;font-size:20px;font-weight:900;letter-spacing:2px;color:#fff;
+  background:linear-gradient(90deg,#9320e6,#b44dff 60%,#d58bff);text-shadow:0 1px 2px rgba(0,0,0,.25)}
+.rec-why{display:inline-block;font-size:13px;font-weight:600;color:#7a14c4;background:#f3e4ff;border-radius:8px;padding:5px 9px;margin-bottom:10px}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .rec-why{background:#3a1d52;color:#e7c6ff}}
+.more-btn{display:block;width:100%;margin:0 0 12px;padding:11px;border:1px dashed var(--line);border-radius:12px;background:transparent;color:var(--accent);font-size:15px;cursor:pointer}
+.via{list-style:none;margin:8px 0 2px;padding:0 0 0 4px}
+.via li{position:relative;padding:3px 0 3px 18px;font-size:13px;color:var(--sub)}
+.via li::before{content:"";position:absolute;left:3px;top:50%;width:7px;height:7px;margin-top:-4px;border-radius:50%;background:var(--card);border:2px solid var(--c)}
+.via li::after{content:"";position:absolute;left:7px;top:0;bottom:0;width:2px;background:var(--c);z-index:-1}
+.via li:first-child::after{top:50%} .via li:last-child::after{bottom:50%}
+.via li.end{color:var(--ink);font-weight:700}
+.via li.end::before{background:var(--c)}
+.via{position:relative;z-index:0}
+.via-tag{font-size:11px;font-weight:600;color:#fff;background:var(--c);border-radius:4px;padding:1px 5px;margin-left:6px}
+.busstop{font-weight:700;color:var(--ink);background:#e8f7ee;border:1px solid #9bd8b4;border-radius:6px;padding:0 5px;white-space:nowrap}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .busstop{background:#163524;border-color:#2f6b49}}
+.saddr2{font-size:12px;color:var(--sub);margin-top:3px}
+.pill-sub{font-size:12px;color:var(--sub);margin-left:3px}
+.step .d{line-height:1.7}
+.busstop{text-decoration:none;cursor:pointer}
+a.busstop:active{transform:scale(.97)}
+.nav-ic{font-size:10px;color:#16a34a}
+.via-link{color:inherit;text-decoration:none;border-bottom:1px dashed var(--sub)}
+.via-link:hover{color:var(--accent)}
+.sname a{color:inherit;text-decoration:none;border-bottom:1px dashed var(--sub)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🚇🚌 轉乘規劃</h1>
+
+  <div class="card addr">
+    <label>輸入目的地地址（留空則用預設終點：<b id="defName"></b>）</label>
+    <div class="row">
+      <input id="addr" placeholder="例：台北市內湖區康寧路三段189號">
+      <button class="btn" id="go">規劃</button>
+    </div>
+    <div class="chips" id="mode">
+      <button class="chip on" data-m="all">全部</button>
+      <button class="chip" data-m="mrt">捷運優先</button>
+      <button class="chip" data-m="bus">公車優先</button>
+      <button class="chip" data-m="less">少轉乘</button>
+    </div>
+  </div>
+
+  <div class="card od">
+    <label class="od-label s" for="from">起點</label>
+    <div class="field"><input id="from"><button class="lov-btn" data-for="from" title="選擇常用地點">▾</button><div class="lov" id="lov-from"></div></div>
+    <button class="swap" id="swap" title="起訖對調">⇅</button>
+    <label class="od-label e" for="to">終點</label>
+    <div class="field"><input id="to"><button class="lov-btn" data-for="to" title="選擇常用地點">▾</button><div class="lov" id="lov-to"></div></div>
+    <button class="btn3d" id="confirmBtn">確認</button>
+  </div>
+
+  <div class="card" id="nearCard">
+    <div class="sec-title">📍 離我最近的公車站 <small id="nearTime"></small></div>
+    <div class="loc"><button class="btn" id="locate">用目前位置找公車站</button><button class="btn" id="hereFrom" disabled>目前位置設為起點</button></div>
+    <div id="near"></div>
+  </div>
+
+  <div class="hint" id="hint">※ 行車時間依距離估算，第一段公車採即時到站；票價為悠遊卡約略金額</div>
+  <div id="out"><div class="empty">輸入目的地後按「規劃」</div></div>
+</div>
+
+<script src="mrt-data.js"></script>
+<script src="planner.js"></script>
+<script>
+const C={walk:'var(--walk)'};
+const label={mrt:'純捷運',mix:'捷運＋公車',bus:'純公車',walk:'步行'};
+const esc=t=>String(t??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let mode='all', ROUTES=[], planAt=new Date();
+
+function color(l){return l.mode==='walk'?C.walk:l.color}
+function pill(l){return l.mode==='walk'?`<span class="pill walk">🚶${l.min}分</span>`
+  :`<span class="pill" style="background:${l.color}">${l.mode==='bus'?'🚌':'🚇'} ${esc(l.line)}</span>`
+   +(l.mode==='bus'?`<span class="pill-sub">🚏${esc(l.from)}上車</span>`:'')}
+// 按站牌 → Google 地圖步行導航到該站牌（手機會開 Google 地圖 App）
+const navUrl=p=>`https://www.google.com/maps/dir/?api=1&destination=${p[0]},${p[1]}&travelmode=walking`;
+const stopName=(n,kind,pos)=>kind!=='bus'?esc(n):pos
+  ?`<a class="busstop" href="${navUrl(pos)}" target="_blank" rel="noopener" title="導航到這個站牌">🚏 ${esc(n)} <span class="nav-ic">➤</span></a>`
+  :`<span class="busstop">🚏 ${esc(n)}</span>`;
+const stopAddr=a=>a?`<div class="saddr2">📍 站牌位置：${esc(a)}</div>`:'';
+function stepText(l){
+  if(l.mode==='walk'){
+    if(l.toKind==='bus') return {t:`🚶 步行到 ${stopName(l.to,'bus',l.toPos)} 公車站牌`,d:`約 ${l.dist} 公尺`+stopAddr(l.toAddr)};
+    return {t:`🚶 步行到 ${esc(l.to)}`,d:`約 ${l.dist} 公尺`};
+  }
+  const wait=l.eta!=null?`<b style="color:var(--r)">即時：${l.eta<=1?'即將進站':l.eta+' 分後進站'}</b>`:`候車約 ${l.wait} 分`;
+  if(l.mode==='bus') return {
+    t:`🚌 ${esc(l.line)} 公車`,
+    d:`${stopName(l.from,'bus',l.viaPos&&l.viaPos[0])} 上車 → ${stopName(l.to,'bus',l.viaPos&&l.viaPos[l.viaPos.length-1])} 下車<br>往 ${esc(l.toward)}・坐 ${l.stops} 站・${wait}`+stopAddr(l.fromAddr)};
+  return {t:`🚇 ${esc(l.line)}`,d:`${esc(l.from)}站 上車 → ${esc(l.to)}站 下車<br>往 ${esc(l.toward)}・坐 ${l.stops} 站・${wait}`};
+}
+function viaList(l){
+  if(!l.via||l.via.length<2) return '';
+  const unit=l.mode==='mrt'?'站':'';
+  return `<ol class="via" style="--c:${l.color}">${l.via.map((n,i)=>{
+    const end=i===0||i===l.via.length-1;
+    const tag=i===0?'<span class="via-tag">上車</span>':i===l.via.length-1?'<span class="via-tag">下車</span>':'';
+    const name=l.mode==='bus'&&l.viaPos?`<a class="via-link" href="${navUrl(l.viaPos[i])}" target="_blank" rel="noopener" title="導航到這個站牌">🚏 ${esc(n)}</a>`:esc(n)+unit;
+    return `<li class="${end?'end':''}">${name}${tag}</li>`}).join('')}</ol>`;
+}
+function routeCard(r,open,rec){
+  const arr=new Date(planAt.getTime()+r.min*60000).toTimeString().slice(0,5);
+  return `<div class="card route${open?' open':''}${rec?' rec':''}">
+   ${rec?`<div class="rec-head">⭐ 最佳建議路線</div>${r.reason?`<div class="rec-why">👍 ${esc(r.reason)}</div>`:''}`:''}
+   <div class="rhead"><div><span class="rtime">${r.min} 分</span>${r.best?'<span class="tag">最快</span>':''}</div>
+     <div class="rmeta">約 ${arr} 抵達</div></div>
+   <div class="rmeta">${label[r.type]}・轉乘 ${r.xfer} 次・約 NT$${r.fare}</div>
+   <div class="strip">${r.legs.map(pill).join('<span class="arrow">›</span>')}</div>
+   <div class="steps">${r.legs.map(l=>{const x=stepText(l);return `<div class="step"><div class="bar" style="background:${color(l)}"></div>
+     <div><div class="t">${x.t}</div><div class="d">${x.d}</div>${viaList(l)}</div>
+     <div class="m">${l.min} 分</div></div>`}).join('')}</div></div>`;
+}
+let showOthers=false;
+function render(){
+  let rs=[...ROUTES];
+  if(mode==='mrt') rs.sort((a,b)=>(a.type!=='mrt')-(b.type!=='mrt')||(a.type==='bus')-(b.type==='bus')||a.min-b.min);
+  if(mode==='bus') rs=rs.filter(r=>r.legs.some(l=>l.mode==='bus'));
+  if(mode==='less') rs.sort((a,b)=>a.xfer-b.xfer||a.min-b.min);
+  if(!rs.length){out.innerHTML='<div class="empty">沒有符合的路線</div>';return}
+  // 「全部」：最佳建議放最上面；其他篩選：照篩選排序的第一條當主推
+  const top=mode==='all'?(rs.find(r=>r.recommend)||rs[0]):rs[0];
+  const rest=rs.filter(r=>r!==top);
+  out.innerHTML=routeCard(top,true,mode==='all'&&top.recommend)
+    +(rest.length?`<button class="more-btn" id="moreBtn">${showOthers?'收起其他路線 ▴':`看其他 ${rest.length} 條路線 ▾`}</button>`:'')
+    +(showOthers?rest.map(r=>routeCard(r,false,false)).join(''):'');
+  out.querySelectorAll('.route').forEach(e=>e.onclick=ev=>{if(ev.target.closest('a'))return;e.classList.toggle('open')});
+  const mb=document.getElementById('moreBtn');
+  if(mb) mb.onclick=()=>{showOthers=!showOthers;render()};
+}
+go.onclick=async()=>{
+  syncAddr();
+  if(!addr.value.trim()) applyDefaults();
+  out.innerHTML='<div class="spin"></div>';
+  try{
+    const j=await Planner.plan(resolvePlace(from.value),resolvePlace(to.value));
+    if(j.error) throw new Error(j.error);
+    ROUTES=j.routes; planAt=new Date(); showOthers=false;
+    const note=[j.from,j.to].filter(p=>p.matched).map(p=>`${p.approx?'⚠️ 約略位置：':'📍 '}${esc(p.matched)}`).join('<br>');
+    render();
+    if(note) out.insertAdjacentHTML('afterbegin',`<div class="hint">${note}</div>`);
+    if(!ROUTES.length) out.innerHTML='<div class="empty">找不到大眾運輸路線（起訖點 1 公里內沒有台北市公車站或捷運站）</div>';
+  }catch(e){out.innerHTML=`<div class="card err">${esc(e.message)}</div>`}
+};
+addr.onkeydown=e=>{if(e.key==='Enter')go.click()};
+confirmBtn.onclick=()=>{go.click();setTimeout(()=>out.scrollIntoView({behavior:'smooth'}),50)};
+from.onkeydown=to.onkeydown=e=>{if(e.key==='Enter')confirmBtn.click()};
+
+// ===== 最上面有輸入目的地地址 → 取代終點；清空 → 還原原本的終點 =====
+var toBeforeAddr=null; // var：applyDefaults 初始化時可能先用到
+function syncAddr(){
+  const v=addr.value.trim();
+  if(v){
+    if(toBeforeAddr===null) toBeforeAddr=to.value;
+    to.value=v;
+  }else if(toBeforeAddr!==null){
+    to.value=toBeforeAddr; toBeforeAddr=null;
+  }
+}
+addr.oninput=syncAddr;
+swap.onclick=()=>{if(addr.value.trim()){addr.value='';toBeforeAddr=null}[from.value,to.value]=[to.value,from.value];edited=true};
+
+// ===== 預設起訖：六張犁 → 葫洲 =====
+const SL='捷運六張犁站', HZ='捷運葫洲站';
+let edited=false;
+function defaults(){
+  return {from:SL,to:HZ,tip:'葫洲站'};
+}
+function applyDefaults(){
+  const d=defaults();
+  defName.textContent=d.tip;
+  if(!edited){from.value=d.from;
+    if(addr.value.trim()) toBeforeAddr=d.to; else to.value=d.to}
+}
+from.oninput=()=>{edited=true};
+// 直接改終點：以手動輸入為準，清掉上方的目的地地址
+to.oninput=()=>{edited=true;if(addr.value.trim()){addr.value='';toBeforeAddr=null}};
+// 點進輸入框就全選，方便直接打新的
+from.onfocus=to.onfocus=e=>e.target.select();
+applyDefaults();
+mode_=document.getElementById('mode');
+mode_.onclick=e=>{const b=e.target.closest('.chip');if(!b)return;
+  mode_.querySelectorAll('.chip').forEach(c=>c.classList.toggle('on',c===b));mode=b.dataset.m;
+  if(ROUTES.length)render();};
+
+// ===== 定位找最近公車站 =====
+const nearEl=document.getElementById('near'), locBtn=document.getElementById('locate');
+let lastPos=null, timer=null;
+function etaCls(t){return /進站|^[1-3] 分$/.test(t)?'soon':/分/.test(t)?'':'off'}
+async function loadNear(lat,lon){
+  lastPos={lat,lon};
+  try{
+    const j={stops:await Planner.nearby(lat,lon)};
+    if(j.error) throw new Error(j.error);
+    nearEl.innerHTML=j.stops.map((s,i)=>`<div class="stop${i===0?' open':''}">
+      <div class="shead"><span class="sname">${i===0?'⭐ ':''}<a href="${navUrl([s.lat,s.lon])}" target="_blank" rel="noopener" title="導航到這個站牌">🚏 ${esc(s.name)}</a></span><span class="sdist">${s.dist} 公尺・走 ${s.walkMin} 分</span></div>
+      <div class="saddr">${s.address}・${s.routes.length} 條路線</div>
+      <div class="rlist">${s.routes.map(r=>`<div class="rrow"><span class="pill">${r.route}</span>
+        <span class="tw">往 ${r.toward}</span><span class="eta ${etaCls(r.eta)}">${r.eta}</span></div>`).join('')}
+        <button class="chip" data-name="${s.name}" style="margin-top:6px">設為起點</button></div></div>`).join('');
+    nearEl.querySelectorAll('.stop').forEach(e=>e.onclick=ev=>{
+      if(ev.target.closest('a'))return;
+      const b=ev.target.closest('[data-name]');
+      if(b){from.value=b.dataset.name+'（公車站）';edited=true;ev.stopPropagation();return}
+      e.classList.toggle('open')});
+    hereFrom.disabled=false;
+    nearTime.textContent='更新 '+new Date().toTimeString().slice(0,8);
+  }catch(e){nearEl.innerHTML=`<div class="err">${e.message}</div>`}
+}
+function locate(){
+  const q=new URLSearchParams(location.search);
+  if(q.get('lat')) return loadNear(+q.get('lat'),+q.get('lon')); // 測試用 ?lat=&lon=
+  if(!navigator.geolocation){nearEl.innerHTML='<div class="err">此瀏覽器不支援定位</div>';return}
+  nearEl.innerHTML='<div class="spin"></div>';
+  navigator.geolocation.getCurrentPosition(
+    p=>loadNear(p.coords.latitude,p.coords.longitude),
+    e=>nearEl.innerHTML=`<div class="err">無法取得定位（${e.code===1?'未允許定位權限':e.message}）</div>`,
+    {enableHighAccuracy:true,timeout:10000});
+}
+locBtn.onclick=locate;
+hereFrom.onclick=()=>{if(lastPos){from.value=HERE;edited=true}};
+
+// ===== 常用地點下拉選單（LOV）=====
+const HOME='家', HERE='📍 目前位置';
+// 家的地址只存在這支手機（localStorage），不寫在公開的程式裡
+function homeAddr(){try{return localStorage.getItem('homeAddr')||''}catch(e){return ''}}
+function askHome(){
+  const a=prompt('輸入家的地址（只會存在這支手機）',homeAddr());
+  if(a&&a.trim()){try{localStorage.setItem('homeAddr',a.trim())}catch(e){}}
+  return homeAddr();
+}
+function resolvePlace(v){
+  v=v.trim();
+  if(v===HOME) return homeAddr()||askHome()||v;
+  if(v===HERE && lastPos) return `${lastPos.lat},${lastPos.lon}`;
+  return v;
+}
+function lovItems(){
+  const items=[
+    {v:SL,t:'六張犁站'},
+    {v:HZ,t:'葫洲站'},
+    {v:HOME,t:'🏠 家',sub:homeAddr()||'尚未設定，點一下輸入'},
+  ];
+  if(lastPos) items.push({v:HERE,t:HERE});
+  items.push({edit:true,t:'✏️ 設定家的地址'});
+  return items;
+}
+function closeLov(){document.querySelectorAll('.lov.open').forEach(l=>l.classList.remove('open'))}
+document.querySelectorAll('.lov-btn').forEach(btn=>btn.onclick=e=>{
+  e.stopPropagation();
+  const box=document.getElementById('lov-'+btn.dataset.for), input=document.getElementById(btn.dataset.for);
+  const wasOpen=box.classList.contains('open'); closeLov(); if(wasOpen) return;
+  box.innerHTML=lovItems().map((it,i)=>`<button data-i="${i}">${esc(it.t)}${it.sub?`<small>${esc(it.sub)}</small>`:''}</button>`).join('');
+  box.querySelectorAll('button').forEach(b=>b.onclick=ev=>{
+    ev.stopPropagation();
+    const it=lovItems()[+b.dataset.i];
+    if(it.edit){
+      askHome(); closeLov(); return;
+    }
+    if(it.v===HOME && !homeAddr() && !askHome()){closeLov();return}
+    if(input===to && addr.value.trim()){addr.value='';toBeforeAddr=null}
+    input.value=it.v; edited=true; closeLov();
+  });
+  box.classList.add('open');
+});
+document.addEventListener('click',closeLov);
+locate();
+clearInterval(timer); timer=setInterval(()=>lastPos&&loadNear(lastPos.lat,lastPos.lon),30000); // 30 秒刷新到站
+</script>
+</body>
+</html>
