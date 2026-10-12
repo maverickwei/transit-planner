@@ -13,11 +13,29 @@ const Planner = (() => {
   const cache = {};
 
   // ------------------------------------------------------------ 資料
+  // 站牌、路線這類靜態資料存在手機的 Cache Storage，半天內再開不用重新下載（約 1.5MB）
+  async function cachedFetch(url, ttl) {
+    try {
+      const store = await caches.open('transit-bus-v1');
+      const hit = await store.match(url);
+      if (hit && Date.now() - (+hit.headers.get('x-saved') || 0) < ttl) return hit;
+      const res = await fetch(url, { cache: 'no-cache' });
+      if (res.ok) {
+        const body = await res.clone().blob();
+        await store.put(url, new Response(body, { headers: { 'x-saved': String(Date.now()) } }));
+      }
+      return res;
+    } catch (e) {
+      return fetch(url, { cache: 'no-cache' });  // 不支援 Cache Storage（如私密瀏覽）就直接下載
+    }
+  }
+
   async function fetchBlob(name, ttl) {
     const hit = cache[name];
     if (hit && Date.now() - hit.t < ttl) return hit.data;
     if (!('DecompressionStream' in window)) throw new Error('瀏覽器版本太舊，請更新 iOS / Safari');
-    const res = await fetch(BLOB + name + '.gz', { cache: 'no-cache' });
+    const url = BLOB + name + '.gz';
+    const res = ttl >= STATIC_TTL ? await cachedFetch(url, ttl / 2) : await fetch(url, { cache: 'no-cache' });
     if (!res.ok) throw new Error(`公車資料讀取失敗（${res.status}）`);
     const text = await new Response(res.body.pipeThrough(new DecompressionStream('gzip'))).text();
     const data = JSON.parse(text.replace(/^﻿/, '')).BusInfo;
