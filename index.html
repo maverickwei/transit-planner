@@ -144,6 +144,7 @@ a.busstop:active{transform:scale(.97)}
   <div id="out"><div class="empty">輸入目的地後按「規劃」</div></div>
 </div>
 
+<script src="stats.js"></script>
 <script src="mrt-data.js"></script>
 <script src="planner.js"></script>
 <script>
@@ -216,6 +217,7 @@ go.onclick=async()=>{
   if(!addr.value.trim()) applyDefaults();
   out.innerHTML='<div class="spin"></div>';
   try{
+    Stats.search(from.value,to.value);
     const j=await Planner.plan(resolvePlace(from.value),resolvePlace(to.value));
     if(j.error) throw new Error(j.error);
     ROUTES=j.routes; planAt=new Date(); showOthers=false;
