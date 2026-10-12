@@ -1,6 +1,6 @@
 // 使用統計（GoatCounter，免費、不用 cookie）：記錄造訪次數，以及每次搜尋的起點 → 終點。
 // GC_CODE 留空時完全不啟動，不會送出任何資料。
-const GC_CODE = '';
+const GC_CODE = 'maverickwei';
 
 const Stats = (() => {
   if (GC_CODE) {
