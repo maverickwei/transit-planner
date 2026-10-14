@@ -21,7 +21,13 @@ const Stats = (() => {
   function search(from, to) {
     if (!GC_CODE) return;
     const title = `${label(from)} → ${label(to)}`;
-    const send = () => window.goatcounter.count({ path: 'search: ' + title, title, event: true });
+    // 另送一筆含搜尋時間（手機時間，到分鐘）的記錄，統計頁就看得到每一次是幾點幾分
+    const d = new Date(), p = n => String(n).padStart(2, '0');
+    const stamp = `${p(d.getMonth() + 1)}/${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+    const send = () => {
+      window.goatcounter.count({ path: 'search: ' + title, title, event: true });
+      window.goatcounter.count({ path: `log: ${stamp} ${title}`, title: `${stamp} ${title}`, event: true });
+    };
     // count.js 是非同步載入，還沒好就稍後再送
     if (window.goatcounter && window.goatcounter.count) send();
     else setTimeout(() => window.goatcounter && window.goatcounter.count && send(), 2000);
